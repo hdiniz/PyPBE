@@ -1,10 +1,16 @@
+import os
 from hashlib import md5
 from base64 import (b64encode, b64decode)
 from Crypto.Cipher import DES, DES3
 
-class PBECipher(object):
+class PBEWithMD5AndDES():
+
+    def __init__(self, pw, iterations):
+        self.salt = os.urandom(8)
+        (self.key, self.iv) = self.pkcs5(
+                self.salt, pw.encode('utf-8'), iterations)
+
     def pad(self, data):
-        # pkcs5 padding
         n = 8 - (len(data) % 8)
         if n == 0:
             return data + chr(8) * 8
@@ -12,43 +18,25 @@ class PBECipher(object):
             return data + chr(n) * n
 
     def unpad(self, data):
-        # remove pkcs5 padding
-        n = ord(data[-1])
+        n = data[-1]
         return data[:-n]
 
     def encrypt(self, data):
-        return self.cipher.encrypt(self.pad(data))
+        cipher = DES.new(self.key, DES.MODE_CBC, IV=self.iv)
+        return b64encode(
+            self.salt + cipher.encrypt(self.pad(data))
+        ).decode()
 
     def decrypt(self, data):
-        return self.unpad(self.cipher.decrypt(data))
-
-class PBEWithMD5AndDES(PBECipher):
-    def __init__(self, salt, pw, iterations):
-        self.pkcs5(salt, pw, iterations)
-        self.cipher = DES.new(self.key, DES.MODE_CBC, IV=self.iv)
+        cipher = DES.new(self.key, DES.MODE_CBC, IV=self.iv)
+        ciphered_txt = b64decode(data)
+        ciphered_txt = ciphered_txt[8:]
+        return self.unpad(
+            cipher.decrypt(ciphered_txt)
+        ).decode()
 
     def pkcs5(self, salt, pw, iterations):
         x = pw + salt
         for i in range(iterations):
-            x = md5(x).digest() 
-
-        self.key = x[:8]
-        self.iv = x[8:]
-
-class PBEWithMD5AndTripleDES(PBECipher):
-    def __init__(self, salt, pw, iterations):
-        self.pkcs5(salt, pw, iterations)
-        self.cipher = DES3.new(self.key, DES3.MODE_CBC, IV=self.iv)
-
-    def pkcs5(self, salt, pw, iterations):
-        a = salt[:4]
-        b = salt[4:]
-        if a == b:
-            a = a[::-1]
-        for i in range(iterations):
-            a = md5(a+pw).digest() 
-            b = md5(b+pw).digest() 
-
-        self.key = a + b[:8]
-        self.iv = b[8:]
-
+            x = md5(x).digest()
+        return (x[:8], x[8:])
