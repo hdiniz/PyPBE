@@ -12,5 +12,15 @@ class TestPBEWithMD5AndDES(unittest.TestCase):
         ciphered_text = cipher.encrypt(self.data)
         self.assertEqual(self.data, cipher.decrypt(ciphered_text))
 
+class TestPBEWithMD5AndTripleDES(unittest.TestCase):
+    password = 'test'
+    data = 'some_data'
+    iterations = 20
+
+    def test_encode(self):
+        cipher = PyPBE.PBEWithMD5AndTripleDES(self.password, self.iterations)
+        ciphered_text = cipher.encrypt(self.data)
+        self.assertEqual(self.data, cipher.decrypt(ciphered_text))
+
 if __name__ == '__main__':
     unittest.main()
